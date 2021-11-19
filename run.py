@@ -8,7 +8,6 @@ import json
 
 NUM_PREPROCESSING_WORKERS = 2
 
-
 def main():
     argp = HfArgumentParser(TrainingArguments)
     # The HfArgumentParser object collects command-line arguments into an object (and provides default values for unspecified arguments).
@@ -48,6 +47,7 @@ def main():
                       help='Limit the number of examples to evaluate on.')
 
     training_args, args = argp.parse_args_into_dataclasses()
+    training_args.save_total_limit = 3
 
     # Dataset selection
     default_datasets = {'qa': ('squad',), 'nli': ('snli',)}
@@ -75,7 +75,7 @@ def main():
     elif args.task == 'nli':
         prepare_train_dataset = prepare_eval_dataset = \
             lambda exs: prepare_dataset_nli(exs, tokenizer, args.max_length)
-        # prepare_eval_dataset = prepare_dataset_nli
+        # prepare_eval_dataset = prepare_dataset_nli(__, tokenizer, ) # TODO
     else:
         raise ValueError('Unrecognized task name: {}'.format(args.task))
 
@@ -83,7 +83,7 @@ def main():
     if dataset_id == ('snli',):
         # remove SNLI examples with no label
         dataset = dataset.filter(lambda ex: ex['label'] != -1)
-    
+
     train_dataset = None
     eval_dataset = None
     train_dataset_featurized = None
@@ -125,7 +125,7 @@ def main():
             predictions=eval_preds.predictions, references=eval_preds.label_ids)
     elif args.task == 'nli':
         compute_metrics = compute_accuracy
-    
+
 
     # This function wraps the compute_metrics function, storing the model's predictions
     # so that they can be dumped along with the computed metrics
@@ -146,7 +146,7 @@ def main():
     )
     # Train and/or evaluate
     if training_args.do_train:
-        trainer.train()
+        trainer.train(resume_from_checkpoint=True)
         trainer.save_model()
         # If you want to customize the way the loss is computed, you should subclass Trainer and override the "compute_loss"
         # method (see https://huggingface.co/transformers/_modules/transformers/trainer.html#Trainer.compute_loss).

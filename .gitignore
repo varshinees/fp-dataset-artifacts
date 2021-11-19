@@ -1,2 +1,7 @@
 *.pyc
 output/
+trained_model/
+eval_output/
+my_venv
+ENV_DIR
+__pycache__
