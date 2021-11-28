@@ -1,12 +1,58 @@
 import datasets
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, \
-    AutoModelForQuestionAnswering, Trainer, TrainingArguments, HfArgumentParser
+    AutoModelForQuestionAnswering, ElectraForSequenceClassification, Trainer, TrainingArguments, HfArgumentParser, PretrainedConfig
 from helpers import prepare_dataset_nli, prepare_train_dataset_qa, \
     prepare_validation_dataset_qa, QuestionAnsweringTrainer, compute_accuracy
 import os
 import json
+import torch.nn as nn
+import numpy as np
+import torch
 
 NUM_PREPROCESSING_WORKERS = 2
+
+'''
+class EnsembleModel(AutoModelForSequenceClassification):
+    config_class = 'ensemble-model'
+    def forward(*args, **kwargs):
+        print("heelo")
+        probs = super().forward(*args, **kwargs)
+        return probs
+
+    # def forward(self, x):
+
+class EnsembleModelConfig(PretrainedConfig):
+   model_type = 'ensemble-model'
+'''
+
+class EnsembleTrainer(Trainer):
+    
+    def __init__(self, bad_model, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bad_model = bad_model
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        loss, outputs = super().compute_loss(model, inputs, True)
+        bad_loss, bad_outputs = super().compute_loss(self.bad_model, inputs, True)
+        
+        inputs_np = inputs['labels'].cpu().numpy()
+        batch_size = len(inputs_np)
+        gold_labels = np.zeros((batch_size, 3))
+        for batch in range(0, batch_size):
+            label = inputs_np[batch]
+            gold_labels[batch][label] = 1
+        gold_labels = torch.LongTensor(gold_labels)
+
+        # loss = -(1-bad_outputs.logits) * gold_labels * outputs.logits
+        new_loss = torch.FloatTensor([0])
+        for i in range(0, batch_size):
+            bad_output = bad_outputs.logits.index_select(dim=0, index=torch.IntTensor([i]))
+            gold_label = gold_labels.index_select(dim=0, index=torch.IntTensor([i]))
+            output = outputs.logits.index_select(dim=0, index=torch.IntTensor([i]))
+            new_loss = torch.add(new_loss, torch.dot(torch.squeeze(torch.neg(torch.add(torch.neg(bad_output), 1)) * gold_label), torch.squeeze(output)))
+
+        return torch.squeeze(new_loss)
+
 
 def main():
     argp = HfArgumentParser(TrainingArguments)
@@ -63,9 +109,14 @@ def main():
     # Here we select the right model fine-tuning head
     model_classes = {'qa': AutoModelForQuestionAnswering,
                      'nli': AutoModelForSequenceClassification}
+
     model_class = model_classes[args.task]
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
+    bad_model = model_class.from_pretrained('./trained_model_old', **task_kwargs)
+
     model = model_class.from_pretrained(args.model, **task_kwargs)
+    model.bad_model = bad_model
+
     tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
 
     # Select the dataset preprocessing function (these functions are defined in helpers.py)
@@ -110,7 +161,7 @@ def main():
         )
 
     # Select the training configuration
-    trainer_class = Trainer
+    trainer_class = EnsembleTrainer
     eval_kwargs = {}
     # If you want to use custom metrics, you should define your own "compute_metrics" function.
     # For an example of a valid compute_metrics function, see compute_accuracy in helpers.py.
@@ -137,6 +188,7 @@ def main():
 
     # Initialize the Trainer object with the specified arguments and the model and dataset we loaded above
     trainer = trainer_class(
+        bad_model=bad_model,
         model=model,
         args=training_args,
         train_dataset=train_dataset_featurized,
@@ -146,7 +198,8 @@ def main():
     )
     # Train and/or evaluate
     if training_args.do_train:
-        trainer.train(resume_from_checkpoint=True)
+        # trainer.train(resume_from_checkpoint=True)
+        trainer.train()
         trainer.save_model()
         # If you want to customize the way the loss is computed, you should subclass Trainer and override the "compute_loss"
         # method (see https://huggingface.co/transformers/_modules/transformers/trainer.html#Trainer.compute_loss).
