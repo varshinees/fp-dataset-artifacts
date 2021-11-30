@@ -11,19 +11,6 @@ import torch
 
 NUM_PREPROCESSING_WORKERS = 2
 
-'''
-class EnsembleModel(AutoModelForSequenceClassification):
-    config_class = 'ensemble-model'
-    def forward(*args, **kwargs):
-        print("heelo")
-        probs = super().forward(*args, **kwargs)
-        return probs
-
-    # def forward(self, x):
-
-class EnsembleModelConfig(PretrainedConfig):
-   model_type = 'ensemble-model'
-'''
 
 class EnsembleTrainer(Trainer):
     
@@ -34,22 +21,11 @@ class EnsembleTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False):
         loss, outputs = super().compute_loss(model, inputs, True)
         bad_loss, bad_outputs = super().compute_loss(self.bad_model, inputs, True)
-        
-        inputs_np = inputs['labels'].cpu().numpy()
-        batch_size = len(inputs_np)
-        gold_labels = np.zeros((batch_size, 3))
-        for batch in range(0, batch_size):
-            label = inputs_np[batch]
-            gold_labels[batch][label] = 1
-        gold_labels = torch.LongTensor(gold_labels)
 
-        # loss = -(1-bad_outputs.logits) * gold_labels * outputs.logits
-        new_loss = torch.FloatTensor([0])
-        for i in range(0, batch_size):
-            bad_output = bad_outputs.logits.index_select(dim=0, index=torch.IntTensor([i]))
-            gold_label = gold_labels.index_select(dim=0, index=torch.IntTensor([i]))
-            output = outputs.logits.index_select(dim=0, index=torch.IntTensor([i]))
-            new_loss = torch.add(new_loss, torch.dot(torch.squeeze(torch.neg(torch.add(torch.neg(bad_output), 1)) * gold_label), torch.squeeze(output)))
+        # select the right probs from the outputs
+        outputs = outputs.logits.index_select(dim=0, index=inputs['labels'])
+        bad_outputs = torch.add(torch.neg(bad_outputs.logits), 1)
+        new_loss = torch.sum(torch.neg(bad_outputs * outputs))
 
         return torch.squeeze(new_loss)
 
@@ -113,6 +89,8 @@ def main():
     model_class = model_classes[args.task]
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
     bad_model = model_class.from_pretrained('./trained_model_old', **task_kwargs)
+    # Freeze bad model's params
+    bad_model.requires_grad = False
 
     model = model_class.from_pretrained(args.model, **task_kwargs)
     model.bad_model = bad_model
@@ -195,6 +173,7 @@ def main():
         eval_dataset=eval_dataset_featurized,
         tokenizer=tokenizer,
         compute_metrics=compute_metrics_and_store_predictions
+        # optmizer= pass in both models parameters concatenated  - model.parameters() and itertools.chain() or a list with both
     )
     # Train and/or evaluate
     if training_args.do_train:
