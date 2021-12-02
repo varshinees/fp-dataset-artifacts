@@ -146,7 +146,7 @@ def main():
     )
     # Train and/or evaluate
     if training_args.do_train:
-        trainer.train(resume_from_checkpoint=True)
+        trainer.train()
         trainer.save_model()
         # If you want to customize the way the loss is computed, you should subclass Trainer and override the "compute_loss"
         # method (see https://huggingface.co/transformers/_modules/transformers/trainer.html#Trainer.compute_loss).
