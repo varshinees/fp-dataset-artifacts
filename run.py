@@ -93,11 +93,11 @@ def main():
 
     model_class = model_classes[args.task]
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
-    bad_model = model_class.from_pretrained('./trained_model_bad2', **task_kwargs)
+    bad_model = model_class.from_pretrained('./trained_model_bad2', **task_kwargs).to(torch.device('cuda:0'))
     # Freeze bad model's params
     bad_model.requires_grad = False
 
-    model = model_class.from_pretrained(args.model, **task_kwargs)
+    model = model_class.from_pretrained(args.model, **task_kwargs).to(torch.device('cuda:0'))
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
 
