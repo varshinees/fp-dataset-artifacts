@@ -8,7 +8,7 @@ lit
 '''
 
 def read_eval_output():
-    file_name = "eval_output/eval_predictions.jsonl"
+    file_name = "eval_output_final/eval_predictions.jsonl"
     f = open(file_name)
     data = []
     avg_predicted_score = []
@@ -39,36 +39,28 @@ def read_eval_output():
             else:
                 num_neutral_right += 1
             num_right += 1
-            confidence = findConfidence(example['predicted_scores'])
-            avg_confidence_right += confidence
-            if "white" in hypothesis:
-                print(hypothesis)
-                print(label)
+            avg_confidence_right += findConfidence(example['predicted_scores'])
+            #if "white" in hypothesis:
+            #    print(hypothesis)
+            #    print(label)
         else:
-            if pred_label == 0:
+            if label == 0:
                 num_entails_wrong += 1
-            elif pred_label == 1:
-                if label == 2:
-                    count +=1
+            elif label == 1:
                 num_contradicts_wrong += 1
             else:
-                
                 num_neutral_wrong += 1
             num_wrong += 1
-            confidence = findConfidence(example['predicted_scores'])
-            avg_confidence_wrong += confidence
+            avg_confidence_wrong += findConfidence(example['predicted_scores'])
         
     print("Entails: " + str(num_entails_right) + " Contradicts: " + str(num_contradicts_right) + " Neutral: " + str(num_neutral_right))
     print("Entails: " + str(num_entails_wrong) + " Contradicts: " + str(num_contradicts_wrong) + " Neutral: " + str(num_neutral_wrong))
     print("Confidence right: " + str((avg_confidence_right / num_right)) + " Confidence wrong: " + str((avg_confidence_wrong / num_wrong)))
-    print("Count", count)
 
 
 def findConfidence(scores):
     scores.sort()
     return scores[2] - scores[1]
-
-
 
 '''
     0: Entails

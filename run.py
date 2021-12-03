@@ -93,12 +93,11 @@ def main():
 
     model_class = model_classes[args.task]
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
-    bad_model = model_class.from_pretrained('./trained_model_bad', **task_kwargs)
+    bad_model = model_class.from_pretrained('./trained_model_bad2', **task_kwargs)
     # Freeze bad model's params
     bad_model.requires_grad = False
 
     model = model_class.from_pretrained(args.model, **task_kwargs)
-    model.bad_model = bad_model
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
 
@@ -109,7 +108,6 @@ def main():
     elif args.task == 'nli':
         prepare_train_dataset = prepare_eval_dataset = \
             lambda exs: prepare_dataset_nli(exs, tokenizer, args.max_length)
-        # prepare_eval_dataset = prepare_dataset_nli(__, tokenizer, ) # TODO
     else:
         raise ValueError('Unrecognized task name: {}'.format(args.task))
 
@@ -183,7 +181,6 @@ def main():
     # Train and/or evaluate
     if training_args.do_train:
         trainer.train()
-        # trainer.train()
         trainer.save_model()
         # If you want to customize the way the loss is computed, you should subclass Trainer and override the "compute_loss"
         # method (see https://huggingface.co/transformers/_modules/transformers/trainer.html#Trainer.compute_loss).

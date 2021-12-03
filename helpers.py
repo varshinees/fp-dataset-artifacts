@@ -13,7 +13,7 @@ QA_MAX_ANSWER_LENGTH = 30
 def prepare_dataset_nli(examples, tokenizer, max_seq_length=None):
     max_seq_length = tokenizer.model_max_length if max_seq_length is None else max_seq_length
     tokenized_examples = tokenizer(
-        ["" for _ in range(0, len(examples['premise']))],
+        examples['premise'],
         examples['hypothesis'],
         truncation=True,
         max_length=max_seq_length,
