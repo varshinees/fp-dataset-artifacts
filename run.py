@@ -24,8 +24,9 @@ class EnsembleTrainer(Trainer):
 
         # take log softmax of outputs
         log_softmax = torch.nn.LogSoftmax()
+        softmax = torch.nn.Softmax()
         outputs = log_softmax(outputs.logits)
-        bad_outputs = log_softmax(bad_outputs.logits)
+        bad_outputs = softmax(bad_outputs.logits)
 
         # select the right probs from the outputs
         outputs = outputs.index_select(dim=0, index=inputs['labels'])
