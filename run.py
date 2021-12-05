@@ -176,16 +176,25 @@ def main():
         return compute_metrics(eval_preds)
 
     # Initialize the Trainer object with the specified arguments and the model and dataset we loaded above
-    trainer = trainer_class(
-        bad_model=bad_model,
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset_featurized,
-        eval_dataset=eval_dataset_featurized,
-        tokenizer=tokenizer,
-        compute_metrics=compute_metrics_and_store_predictions
-        # optmizer= pass in both models parameters concatenated  - model.parameters() and itertools.chain() or a list with both
-    )
+    if training_args.do_train:
+        trainer = trainer_class(
+            bad_model=bad_model,
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset_featurized,
+            eval_dataset=eval_dataset_featurized,
+            tokenizer=tokenizer,
+            compute_metrics=compute_metrics_and_store_predictions
+        )
+    else if training_args.do_eval:
+        trainer = trainer_class(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset_featurized,
+            eval_dataset=eval_dataset_featurized,
+            tokenizer=tokenizer,
+            compute_metrics=compute_metrics_and_store_predictions
+        )
     # Train and/or evaluate
     if training_args.do_train:
         trainer.train()
