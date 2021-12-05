@@ -8,6 +8,18 @@ import json
 
 NUM_PREPROCESSING_WORKERS = 2
 
+'''
+NOTE: REMEMBER TO CHANGE THE LINE IN HELPERS.PY TO DO HYPOTHESIS-ONLY!!
+
+PREMISES:
+    TRAIN: python3 run.py --do_train --task nli --dataset snli --output_dir ./trained_model_premise_bad/ --num_train_epochs 0.1 --per_device_train_batch_size 256
+    EVAL: python3 run.py --do_eval --task nli --dataset snli --model ./trained_model_premise_bad/ --output_dir ./eval_out_premise_bad/
+
+HYPOTHESES:
+    TRAIN: python3 run.py --do_train --task nli --dataset snli --output_dir ./trained_model_hypothesis_bad/ --num_train_epochs 0.1 --per_device_train_batch_size 256
+    EVAL: python3 run.py --do_eval --task nli --dataset snli --model ./trained_model_hypothesis_bad/ --output_dir ./eval_out_hypothesis_bad/
+'''
+
 def main():
     argp = HfArgumentParser(TrainingArguments)
     # The HfArgumentParser object collects command-line arguments into an object (and provides default values for unspecified arguments).
