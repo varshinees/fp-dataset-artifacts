@@ -11,6 +11,12 @@ import torch
 
 NUM_PREPROCESSING_WORKERS = 2
 
+''''
+This branch is for PREMISE-GOOD
+    TRAIN: python3 run.py --do_train --task nli --dataset snli --output_dir ./trained_model_premise_good/ --per_device_train_batch_size 256
+    EVAL: python3 run.py --do_eval --task nli --dataset snli --model ./trained_model_premise_good/ --output_dir ./eval_output_premise_good/
+'''
+
 
 class EnsembleTrainer(Trainer):
     
@@ -94,7 +100,7 @@ def main():
 
     model_class = model_classes[args.task]
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
-    bad_model = model_class.from_pretrained('./trained_model_bad2', **task_kwargs).to(torch.device('cuda:0'))
+    bad_model = model_class.from_pretrained('./trained_model_premise_bad', **task_kwargs).to(torch.device('cuda:0'))
     # Freeze bad model's params
     bad_model.requires_grad = False
 
@@ -143,7 +149,8 @@ def main():
         )
 
     # Select the training configuration
-    trainer_class = EnsembleTrainer
+    trainer_class = EnsembleTrainer if training_args.do_train else Trainer
+
     eval_kwargs = {}
     # If you want to use custom metrics, you should define your own "compute_metrics" function.
     # For an example of a valid compute_metrics function, see compute_accuracy in helpers.py.
