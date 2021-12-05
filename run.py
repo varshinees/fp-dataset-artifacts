@@ -185,7 +185,7 @@ def main():
             tokenizer=tokenizer,
             compute_metrics=compute_metrics_and_store_predictions
         )
-    else if training_args.do_eval:
+    elif training_args.do_eval:
         trainer = trainer_class(
             model=model,
             args=training_args,
