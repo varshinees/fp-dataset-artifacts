@@ -28,16 +28,14 @@ class EnsembleTrainer(Trainer):
         loss, outputs = super().compute_loss(model, inputs, True)
         bad_loss, bad_outputs = super().compute_loss(self.bad_model, inputs, True)
 
-        # take log softmax of outputs
+        # takes the residuals instead
         log_softmax = torch.nn.LogSoftmax()
-        softmax = torch.nn.Softmax()
-        outputs = log_softmax(outputs.logits)
-        bad_outputs = softmax(bad_outputs.logits)
 
-        # select the right probs from the outputs
-        outputs = outputs.index_select(dim=0, index=inputs['labels'])
-        bad_outputs = torch.add(torch.neg(bad_outputs), 1)
-        new_loss = torch.sum(torch.neg(bad_outputs * outputs))
+        outputs = log_softmax(outputs.logits)
+        bad_outputs = log_softmax(bad_outputs.logits)
+
+        outputs = log_softmax(torch.add(outputs, bad_outputs))
+        new_loss = torch.sum(torch.neg(outputs.index_select(dim=0, index=inputs['labels'])))
 
         return torch.squeeze(new_loss)
 
@@ -100,7 +98,8 @@ def main():
 
     model_class = model_classes[args.task]
     # Initialize the model and tokenizer from the specified pretrained model/checkpoint
-    bad_model = model_class.from_pretrained('./trained_model_premise_bad', **task_kwargs).to(torch.device('cuda:0'))
+    bad_model = model_class.from_pretrained('./trained_model_hypothesis_bad', **task_kwargs).to(torch.device('cuda:0'))
+
     # Freeze bad model's params
     bad_model.requires_grad = False
 
@@ -186,7 +185,7 @@ def main():
             tokenizer=tokenizer,
             compute_metrics=compute_metrics_and_store_predictions
         )
-    else if training_args.do_eval:
+    elif training_args.do_eval:
         trainer = trainer_class(
             model=model,
             args=training_args,
