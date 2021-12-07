@@ -27,19 +27,18 @@ class EnsembleTrainer(Trainer):
     def compute_loss(self, model, inputs, return_outputs=False):
         loss, outputs = super().compute_loss(model, inputs, True)
         bad_loss, bad_outputs = super().compute_loss(self.bad_model, inputs, True)
+        
+        # takes the residuals instead
+        log_softmax = nn.LogSoftmax(dim=-1)
 
-        # take log softmax of outputs
-        log_softmax = torch.nn.LogSoftmax()
-        softmax = torch.nn.Softmax()
         outputs = log_softmax(outputs.logits)
-        bad_outputs = softmax(bad_outputs.logits)
+        bad_outputs = log_softmax(bad_outputs.logits)
+        outputs = log_softmax(torch.add(outputs, bad_outputs))
+  
+        loss_func = nn.NLLLoss()
+        loss = loss_func(outputs, inputs['labels'])
 
-        # select the right probs from the outputs
-        outputs = outputs.index_select(dim=0, index=inputs['labels'])
-        bad_outputs = torch.add(torch.neg(bad_outputs), 1)
-        new_loss = torch.sum(torch.neg(bad_outputs * outputs))
-
-        return torch.squeeze(new_loss)
+        return loss
 
 
 def main():
